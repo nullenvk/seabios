@@ -140,6 +140,15 @@ endchoice
             it into 128 KB (which was big enouth for a long time) you'll
             probably have to disable some featues such as xhci support.
 
+    config LPCPROTECT
+        depends on BOOTMENU
+        bool "Enable flash write protection through LPC"
+        default y
+        help
+            Enable write protection of the BIOS flash chip through the
+            LPC Interface Bridge by configuring the BIOS_CNTL register
+            and add an option to disable it in the boot menu.
+
 endmenu
 
 menu "Hardware support"

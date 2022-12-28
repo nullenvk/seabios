@@ -13,6 +13,7 @@
 #include "hw/pcidevice.h" // struct pci_device
 #include "hw/rtc.h" // rtc_read
 #include "hw/usb.h" // struct usbdevice_s
+#include "hw/lpc.h" // lpc_*
 #include "list.h" // hlist_node
 #include "malloc.h" // free
 #include "output.h" // dprintf
@@ -687,7 +688,8 @@ static const char menuchars[] = {
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
     'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
     's', /* skip t (tpm menu) */
-    'u', 'v', 'w', 'x', 'y', 'z'
+    'u', 'v', /* skip w (write protection) */
+    'x', 'y', 'z'
 };
 
 // Show IPL option menu.
@@ -700,9 +702,10 @@ interactive_bootmenu(void)
     if (!show_boot_menu)
         return;
 
-    // skip menu if only one boot device and no TPM
+    // skip menu if only one boot device and no TPM or flash protection
     if (show_boot_menu == 2 && !tpm_can_show_menu()
-        && !hlist_empty(&BootList) && !BootList.first->next) {
+        && !hlist_empty(&BootList) && !BootList.first->next
+        && !lpc_can_wprotect()) {
         dprintf(1, "Only one boot device present. Skip boot menu.\n");
         printf("\n");
         return;
@@ -716,12 +719,17 @@ interactive_bootmenu(void)
     printf("%s", bootmsg ?: "\nPress ESC for boot menu.\n\n");
     free(bootmsg);
 
+    int enable_flash_protection = CONFIG_LPCPROTECT ? 1 : 0;
+
     u32 menutime = romfile_loadint("etc/boot-menu-wait", DEFAULT_BOOTMENU_WAIT);
     enable_bootsplash();
     int scan_code = get_keystroke(menutime);
     disable_bootsplash();
-    if (scan_code != menukey)
+    if (scan_code != menukey) {
+        if (lpc_can_wprotect() && enable_flash_protection)
+            lpc_wprotect();
         return;
+    }
 
     while (get_keystroke(0) >= 0)
         ;
@@ -741,8 +749,15 @@ interactive_bootmenu(void)
                , strtcpy(desc, pos->description, ARRAY_SIZE(desc)));
         maxmenu++;
     }
+
+    printf("\n");
+
     if (tpm_can_show_menu()) {
-        printf("\nt. TPM Configuration\n");
+        printf("t. TPM Configuration\n");
+    }
+
+    if (lpc_can_wprotect() && enable_flash_protection) {
+        printf("w. Disable BIOS flash protection\n");
     }
 
     // Get key press.  If the menu key is ESC, do not restart boot unless
@@ -763,6 +778,12 @@ interactive_bootmenu(void)
             printf("\n");
             tpm_menu();
         }
+
+        if(key_ascii == 'w' && lpc_can_wprotect() && enable_flash_protection) {
+            printf("BIOS flash write protection disabled!\n");
+            enable_flash_protection = 0;
+        }
+
         if (scan_code == 1) {
             // ESC
             printf("\n");
@@ -783,6 +804,10 @@ interactive_bootmenu(void)
             break;
     }
     printf("\n");
+
+    if (enable_flash_protection) {
+        lpc_wprotect();
+    }
 
     // Find entry and make top priority.
     hlist_del(&boot->node);

@@ -17,6 +17,7 @@
 #include "hw/rtc.h" // rtc_write
 #include "hw/serialio.h" // serial_debug_preinit
 #include "hw/usb.h" // usb_setup
+#include "hw/lpc.h" // lpc_setup
 #include "malloc.h" // malloc_init
 #include "memmap.h" // SYMBOL
 #include "output.h" // dprintf
@@ -131,6 +132,7 @@ device_hardware_setup(void)
     block_setup();
     lpt_setup();
     serial_setup();
+    lpc_setup();
     cbfs_payload_setup();
 }
 
