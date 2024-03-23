@@ -114,14 +114,14 @@ set_active_page(u8 page)
         return;
 
     // Get the mode
-    struct vgamode_s *vmode_g = get_current_mode();
-    if (!vmode_g)
+    struct vgamode_s *curmode_g = get_current_mode();
+    if (!curmode_g)
         return;
 
     // Calculate memory address of start of page
     struct cursorpos cp = {0, 0, page};
     int address = (int)text_address(cp);
-    vgahw_set_displaystart(vmode_g, address);
+    vgahw_set_displaystart(curmode_g, address);
 
     // And change the BIOS page
     SET_BDA(video_pagestart, address);
@@ -1081,7 +1081,7 @@ handle_101c(struct bregs *regs)
     if (ret < 0)
         goto fail;
     if (cmd == 0)
-        regs->bx = ret / 64;
+        regs->bx = DIV_ROUND_UP(ret, 64);
     regs->al = 0x1c;
 fail:
     return;

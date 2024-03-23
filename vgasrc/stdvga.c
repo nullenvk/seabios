@@ -264,68 +264,74 @@ stdvga_get_vde(void)
 }
 
 int
-stdvga_get_window(struct vgamode_s *vmode_g, int window)
+stdvga_get_window(struct vgamode_s *curmode_g, int window)
 {
     return -1;
 }
 
 int
-stdvga_set_window(struct vgamode_s *vmode_g, int window, int val)
+stdvga_set_window(struct vgamode_s *curmode_g, int window, int val)
 {
     return -1;
 }
 
+// Minimum framebuffer bytes between each vertical line for given mode
 int
-stdvga_get_linelength(struct vgamode_s *vmode_g)
+stdvga_minimum_linelength(struct vgamode_s *vmode_g)
+{
+    return DIV_ROUND_UP(GET_GLOBAL(vmode_g->width) * vga_bpp(vmode_g), 8);
+}
+
+// Return number of framebuffer bytes between start of each vertical line
+int
+stdvga_get_linelength(struct vgamode_s *curmode_g)
 {
     u8 val = stdvga_crtc_read(stdvga_get_crtc(), 0x13);
-    return val * 8 / stdvga_vram_ratio(vmode_g);
+    return val * 8 / stdvga_vram_ratio(curmode_g);
 }
 
+// Set number of framebuffer bytes between start of each vertical line
 int
-stdvga_set_linelength(struct vgamode_s *vmode_g, int val)
+stdvga_set_linelength(struct vgamode_s *curmode_g, int val)
 {
-    val = DIV_ROUND_UP(val * stdvga_vram_ratio(vmode_g), 8);
+    val = DIV_ROUND_UP(val * stdvga_vram_ratio(curmode_g), 8);
     stdvga_crtc_write(stdvga_get_crtc(), 0x13, val);
     return 0;
 }
 
+// Return framebuffer offset of first byte of displayed content
 int
-stdvga_get_displaystart(struct vgamode_s *vmode_g)
+stdvga_get_displaystart(struct vgamode_s *curmode_g)
 {
     u16 crtc_addr = stdvga_get_crtc();
     int addr = (stdvga_crtc_read(crtc_addr, 0x0c) << 8
                 | stdvga_crtc_read(crtc_addr, 0x0d));
-    return addr * 4 / stdvga_vram_ratio(vmode_g);
+    return addr * 4 / stdvga_vram_ratio(curmode_g);
 }
 
+// Set framebuffer offset of first byte of displayed content
 int
-stdvga_set_displaystart(struct vgamode_s *vmode_g, int val)
+stdvga_set_displaystart(struct vgamode_s *curmode_g, int val)
 {
     u16 crtc_addr = stdvga_get_crtc();
-    val = val * stdvga_vram_ratio(vmode_g) / 4;
+    val = val * stdvga_vram_ratio(curmode_g) / 4;
     stdvga_crtc_write(crtc_addr, 0x0c, val >> 8);
     stdvga_crtc_write(crtc_addr, 0x0d, val);
     return 0;
 }
 
 int
-stdvga_get_dacformat(struct vgamode_s *vmode_g)
+stdvga_get_dacformat(struct vgamode_s *curmode_g)
 {
     return -1;
 }
 
 int
-stdvga_set_dacformat(struct vgamode_s *vmode_g, int val)
+stdvga_set_dacformat(struct vgamode_s *curmode_g, int val)
 {
     return -1;
 }
 
-int
-stdvga_get_linesize(struct vgamode_s *vmode_g)
-{
-    return DIV_ROUND_UP(GET_GLOBAL(vmode_g->width) * vga_bpp(vmode_g), 8);
-}
 
 /****************************************************************
  * Save/Restore state
